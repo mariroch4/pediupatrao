@@ -137,6 +137,23 @@ RECEBIDO → EM PREPARAÇÃO → PRONTO → SAIU PARA ENTREGA (entrega) / RETIRA
 
 ---
 
+## Principais alterações em relação ao projeto original
+
+| Problema encontrado no projeto original | Correção |
+|---|---|
+| `/api/usuarios` liberada sem login | Rota restrita ao ADMIN + `@PreAuthorize` no service |
+| Todos os usuários recebiam a role `USER` | Enum `Perfil` e login com o perfil real |
+| CSRF desativado | CSRF ativo em formulários e chamadas `fetch` |
+| Banco compartilhado pela turma (MongoDB Atlas com credencial no código) | MongoDB local; credencial removida do `application.properties` |
+| Hash da senha retornado pela API e enviado ao formulário de edição | Senha `WRITE_ONLY` no JSON e campo vazio no formulário |
+| Pedido com `tipoPizza`, `sabor` e `status` em texto livre, sem valores | Novo modelo com itens, totais calculados no servidor e máquina de estados |
+| Regras de negócio nos controllers | Regras centralizadas nos services e controllers separados por domínio |
+| Lista de clientes vulnerável a XSS (dados inseridos como HTML) | Dados escapados antes da exibição |
+| Ausência de tratamento padronizado de erros | `ApiExceptionHandler` (400/404/422 em JSON) e página 403 |
+| Sem testes automatizados | 37 testes (unitários e de segurança da API) |
+
+---
+
 ## Principais endpoints da API
 
 | Método | Rota | Perfis | Descrição |
