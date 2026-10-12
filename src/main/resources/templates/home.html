@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Home</title>
+</head>
+<body>
+
+<div th:fragment="content" class="d-flex justify-content-center align-items-center" style="min-height: 85vh;">
+    <div class="text-center">
+        <img th:src="@{/images/logo.png}" alt="Logo Pediu Patrão" width="280" height="280" class="mb-3">
+        <h1 class="titulo-boas-vindas mb-1">
+            Bem-vindo<span sec:authorize="isAuthenticated()">, <span sec:authentication="name">usuario</span></span>!
+        </h1>
+    </div>
+</div>
+
+</body>
+</html>

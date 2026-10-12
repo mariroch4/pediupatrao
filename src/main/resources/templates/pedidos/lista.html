@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Pedidos</title>
+</head>
+<body>
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-bag me-2 text-primary"></i>Pedidos
+        </h2>
+        <!-- Visual apenas: o backend também bloqueia ADMIN de registrar pedidos -->
+        <a th:href="@{/pedidos/novo}" class="btn btn-primary" sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')">
+            <i class="bi bi-plus-lg me-1"></i> Novo Pedido
+        </a>
+    </div>
+
+    <div class="alert alert-success alert-dismissible fade show" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-4">Pedido</th>
+                            <th>Cliente</th>
+                            <th>Itens</th>
+                            <th class="text-end">Total</th>
+                            <th>Status</th>
+                            <th>Entrada</th>
+                            <th class="text-end pe-4">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(pedidos)}">
+                            <td colspan="7" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                Nenhum pedido registrado.
+                            </td>
+                        </tr>
+                        <tr th:each="p : ${pedidos}">
+                            <td class="ps-4 fw-medium"
+                                th:text="${'#' + #strings.toUpperCase(#strings.substring(p.id, p.id.length() - 6))}"></td>
+                            <td th:text="${p.clienteNome}"></td>
+                            <td>
+                                <div class="small" th:each="i : ${p.itens}"
+                                     th:text="${i.quantidade + 'x ' + i.nomeProduto}"></div>
+                            </td>
+                            <td class="text-end fw-bold"
+                                th:text="${'R$ ' + #numbers.formatDecimal(p.valorTotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td>
+                                <span class="badge" th:classappend="${p.status.corBadge}"
+                                      th:text="${p.status.descricao}"></span>
+                            </td>
+                            <td class="small">
+                                <div th:text="${#temporals.format(p.dataHoraEntrada, 'dd/MM/yyyy HH:mm')}"></div>
+                                <div class="text-muted" th:text="${'por ' + p.responsavelEntrada}"></div>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a th:href="@{/pedidos/{id}(id=${p.id})}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-muted small" th:if="${!#lists.isEmpty(pedidos)}">
+            Total: <strong th:text="${#lists.size(pedidos)}"></strong> pedido(s)
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

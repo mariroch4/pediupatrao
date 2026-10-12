@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Lista de Clientes</title>
+</head>
+<body>
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-person-raised-hand me-2 text-primary"></i>Clientes
+        </h2>
+        <a th:href="@{/clientes/novo}" class="btn btn-primary" sec:authorize="hasRole('ATENDENTE')">
+            <i class="bi bi-plus-lg me-1"></i> Novo Cliente
+        </a>
+    </div>
+
+    <div class="alert alert-success alert-dismissible fade show" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Nome</th>
+                        <th>Telefone</th>
+                        <th>Endereço</th>
+                        <th class="text-end pe-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="clientes-tabela">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const PODE_EDITAR = /*[[${podeEditar}]]*/ false;
+        const PODE_EXCLUIR = /*[[${podeExcluir}]]*/ false;
+
+        const API_URL = '/api/clientes';
+        const tabelaClientes = document.getElementById('clientes-tabela');
+
+        function esc(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function formatarEndereco(cliente) {
+            const partes = [cliente.logradouro, cliente.numero, cliente.complemento,
+                            cliente.bairro, cliente.cidade, cliente.estado]
+                .filter(p => p && p.trim() !== '');
+            return partes.length > 0 ? partes.join(', ') : (cliente.endereco || '—');
+        }
+
+        async function carregarClientes() {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                tabelaClientes.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Não foi possível carregar os clientes.</td></tr>';
+                return;
+            }
+            const clientes = await response.json();
+
+            if (clientes.length === 0) {
+                tabelaClientes.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Nenhum cliente cadastrado.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tabelaClientes.innerHTML = clientes.map(cliente => `
+                <tr>
+                    <td class="ps-4">${esc(cliente.nome || '—')}</td>
+                    <td>${esc(cliente.telefone || '—')}</td>
+                    <td>${esc(formatarEndereco(cliente))}</td>
+                    <td class="text-end pe-4">
+                        ${PODE_EDITAR ? `
+                        <a href="/clientes/editar/${encodeURIComponent(cliente.id)}" class="btn btn-sm btn-outline-primary me-1">
+                            <i class="bi bi-pencil-fill"></i> Editar
+                        </a>` : ''}
+                        ${PODE_EXCLUIR ? `
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${esc(cliente.id)}">
+                            <i class="bi bi-trash-fill"></i> Excluir
+                        </button>` : ''}
+                    </td>
+                </tr>`).join('');
+        }
+
+        // Exclusão 
+        tabelaClientes.addEventListener('click', async (evento) => {
+            const botao = evento.target.closest('.btn-excluir');
+            if (!botao) return;
+            if (!confirm('Tem certeza que deseja excluir este cliente? Os dados ficarão registrados na auditoria.')) return;
+
+            const response = await fetch(`${API_URL}/${encodeURIComponent(botao.dataset.id)}`, {method: 'DELETE'});
+            if (response.ok) {
+                alert('Cliente excluído com sucesso!');
+                carregarClientes();
+            } else {
+                const corpo = await response.json().catch(() => ({}));
+                alert(corpo.mensagem || 'Erro ao excluir o cliente.');
+            }
+        });
+
+        carregarClientes();
+    </script>
+</div>
+</body>
+</html>

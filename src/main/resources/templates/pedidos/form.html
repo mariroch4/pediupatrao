@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Novo Pedido</title>
+</head>
+<body>
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a th:href="@{/pedidos}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0"><i class="bi bi-bag-plus me-2"></i>Novo Pedido</h2>
+    </div>
+
+    <div class="alert alert-danger" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+    </div>
+    <div class="alert alert-warning" th:if="${#lists.isEmpty(clientes)}" role="alert">
+        <i class="bi bi-person-exclamation me-2"></i>
+        Nenhum cliente cadastrado. Cadastre o cliente antes de registrar o pedido.
+    </div>
+
+    <form th:action="@{/pedidos/salvar}" method="post">
+        <div class="row g-4">
+
+            <div class="col-lg-8">
+                <!-- 1. Cliente e tipo -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header fw-bold">1. Cliente e atendimento</div>
+                    <div class="card-body">
+                        <label for="buscaCliente" class="form-label fw-medium">Cliente</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="search" id="buscaCliente" class="form-control"
+                                   placeholder="Buscar por nome ou telefone..." autocomplete="off">
+                        </div>
+
+                        <!-- Lista de clientes (cada cartão é um "radio": só um pode ser escolhido) -->
+                        <div class="lista-clientes" id="listaClientes">
+                            <label class="cliente-opcao" th:each="c : ${clientes}"
+                                   th:attr="data-busca=${c.nome + ' ' + (c.telefone != null ? c.telefone : '')}">
+                                <input class="form-check-input mt-0" type="radio" name="clienteId"
+                                       th:value="${c.id}" required>
+                                <span class="cliente-avatar"
+                                      th:text="${c.nome != null and c.nome.length() > 0 ? #strings.toUpperCase(#strings.substring(c.nome, 0, 1)) : '?'}">C</span>
+                                <span class="flex-grow-1">
+                                    <span class="d-block fw-semibold" th:text="${c.nome}">Nome</span>
+                                    <small class="text-muted">
+                                        <i class="bi bi-telephone me-1"></i><span th:text="${c.telefone}">Telefone</span>
+                                    </small>
+                                </span>
+                            </label>
+                            <div class="text-center text-muted small py-3 d-none" id="semResultado">
+                                <i class="bi bi-search me-1"></i> Nenhum cliente encontrado.
+                            </div>
+                        </div>
+                        <div class="form-text mb-3" id="buscaInfo"></div>
+
+                        <label class="form-label fw-medium d-block">Tipo de atendimento</label>
+                        <div class="form-check form-check-inline" th:each="t, st : ${tiposEntrega}">
+                            <input class="form-check-input" type="radio" name="tipoEntrega"
+                                   th:id="${'tipo' + st.index}" th:value="${t}" th:checked="${st.first}" required>
+                            <label class="form-check-label" th:for="${'tipo' + st.index}" th:text="${t.descricao}">Tipo</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Itens -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header fw-bold">2. Itens (informe a quantidade de cada produto)</div>
+                    <div class="card-body p-0">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Produto</th>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Preço</th>
+                                    <th style="width: 120px;">Qtd.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:if="${#lists.isEmpty(produtos)}">
+                                    <td colspan="4" class="text-center text-muted py-4">Nenhum produto ativo cadastrado.</td>
+                                </tr>
+                                <tr th:each="prod : ${produtos}">
+                                    <td class="ps-3 fw-medium" th:text="${prod.nome}"></td>
+                                    <td th:text="${prod.tipo}"></td>
+                                    <td class="text-end"
+                                        th:text="${'R$ ' + #numbers.formatDecimal(prod.preco, 1, 'POINT', 2, 'COMMA')}"></td>
+                                    <td>
+                                        <!-- Só o id do produto e a quantidade são enviados ao servidor -->
+                                        <input type="hidden" name="produtoIds" th:value="${prod.id}">
+                                        <input type="number" name="quantidades" value="0" min="0" max="50"
+                                               class="form-control form-control-sm qtd"
+                                               th:attr="data-preco=${prod.preco}">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. Observação -->
+                <div class="card shadow-sm">
+                    <div class="card-header fw-bold">3. Observação (opcional)</div>
+                    <div class="card-body">
+                        <textarea name="observacao" class="form-control" rows="2" maxlength="200"
+                                  placeholder="Ex.: sem cebola, troco para R$ 100"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted small">Estimativa</div>
+                        <div class="fs-3 fw-bold" id="estimativa">R$ 0,00</div>
+                        <p class="small text-muted mt-2 mb-3">
+                            Valor apenas de referência. O total oficial é calculado pelo
+                            servidor com os preços cadastrados.
+                        </p>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-lg me-1"></i> Registrar Pedido
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+
+    <script>
+        (function () {
+            const busca = document.getElementById('buscaCliente');
+            const opcoes = Array.from(document.querySelectorAll('#listaClientes .cliente-opcao'));
+            const semResultado = document.getElementById('semResultado');
+            const info = document.getElementById('buscaInfo');
+
+            function normalizar(texto) {
+                return (texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            }
+
+            function filtrar() {
+                const termo = normalizar(busca.value.trim());
+                const termoDigitos = busca.value.replace(/\D/g, '');
+                let visiveis = 0;
+
+                opcoes.forEach(function (opcao) {
+                    const texto = opcao.dataset.busca || '';
+                    const confereNome = !termo || normalizar(texto).includes(termo);
+                    const confereTelefone = termoDigitos.length >= 3
+                            && texto.replace(/\D/g, '').includes(termoDigitos);
+                    const mostrar = confereNome || confereTelefone;
+                    opcao.classList.toggle('d-none', !mostrar);
+                    if (mostrar) {
+                        visiveis++;
+                    }
+                });
+
+                semResultado.classList.toggle('d-none', visiveis > 0 || opcoes.length === 0);
+                info.textContent = opcoes.length === 0 ? '' : visiveis + ' cliente(s). Clique para selecionar.';
+            }
+
+            busca.addEventListener('input', filtrar);
+
+            busca.addEventListener('keydown', function (evento) {
+                if (evento.key === 'Enter') {
+                    evento.preventDefault();
+                    const primeiro = opcoes.find(function (o) { return !o.classList.contains('d-none'); });
+                    if (primeiro) {
+                        primeiro.querySelector('input').checked = true;
+                    }
+                }
+            });
+
+            filtrar();
+        })();
+
+        (function () {
+            const campos = document.querySelectorAll('.qtd');
+            const saida = document.getElementById('estimativa');
+
+            function atualizar() {
+                let total = 0;
+                campos.forEach(function (campo) {
+                    const quantidade = parseInt(campo.value, 10) || 0;
+                    total += quantidade * parseFloat(campo.dataset.preco || '0');
+                });
+                saida.textContent = total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            }
+
+            campos.forEach(function (campo) {
+                campo.addEventListener('input', atualizar);
+            });
+            atualizar();
+        })();
+    </script>
+
+</div>
+</body>
+</html>

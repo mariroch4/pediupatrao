@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Detalhes do Pedido</title>
+</head>
+<body>
+<div th:fragment="content">
+
+    <style>
+        /* Linha do tempo do pedido */
+        .fluxo-pedido {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .fluxo-etapa {
+            flex: 1;
+            position: relative;
+            text-align: center;
+        }
+        .fluxo-etapa:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: calc(50% + 28px);
+            right: calc(-50% + 28px);
+            height: 3px;
+            border-radius: 2px;
+            background-color: #dee2e6;
+        }
+        .fluxo-etapa.concluida:not(:last-child)::after {
+            background-color: #198754;
+        }
+        .fluxo-icone {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 0.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 2px solid #dee2e6;
+            background-color: #f1f3f5;
+            color: #adb5bd;
+            font-size: 1.3rem;
+        }
+        .concluida .fluxo-icone {
+            background-color: #198754;
+            border-color: #198754;
+            color: #fff;
+        }
+        .atual .fluxo-icone {
+            background-color: #ffc107;
+            border-color: #23272f;
+            color: #23272f;
+            box-shadow: 0 0 0 5px rgba(255, 193, 7, 0.3);
+        }
+        .fluxo-rotulo {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .concluida .fluxo-rotulo,
+        .atual .fluxo-rotulo {
+            color: #212529;
+            font-weight: 600;
+        }
+        @media (max-width: 576px) {
+            .fluxo-icone {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+            .fluxo-etapa:not(:last-child)::after {
+                top: 20px;
+                left: calc(50% + 24px);
+                right: calc(-50% + 24px);
+            }
+            .fluxo-rotulo {
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+        <a th:href="@{/pedidos}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-receipt me-2"></i><span
+                th:text="${'Pedido #' + #strings.toUpperCase(#strings.substring(pedido.id, pedido.id.length() - 6))}">Pedido</span>
+        </h2>
+        <span class="badge fs-6" th:classappend="${pedido.status.corBadge}">
+            <i class="bi me-1" th:classappend="${pedido.status.icone}"></i><span th:text="${pedido.status.descricao}"></span>
+        </span>
+    </div>
+
+    <!-- Linha do tempo do fluxo -->
+    <div class="card shadow-sm mb-4"
+         th:with="posicao=${fluxo.indexOf(pedido.status)},
+                  cancelado=${pedido.status.name() == 'CANCELADO'},
+                  finalizado=${pedido.status.name() == 'FINALIZADO'},
+                  etapasPercorridas=${pedido.historicoStatus.![status]}">
+        <div class="card-body py-4">
+            <div class="fluxo-pedido">
+                <div class="fluxo-etapa" th:each="s, st : ${fluxo}"
+                     th:with="concluida=${cancelado ? #lists.contains(etapasPercorridas, s) : (st.index < posicao or finalizado)},
+                              atual=${!cancelado and !finalizado and st.index == posicao}"
+                     th:classappend="${concluida} ? 'concluida' : (${atual} ? 'atual' : '')">
+                    <div class="fluxo-icone"><i class="bi" th:classappend="${s.icone}"></i></div>
+                    <div class="fluxo-rotulo" th:text="${s.descricao}"></div>
+                </div>
+            </div>
+            <div class="text-center mt-3" th:if="${cancelado}">
+                <span class="badge bg-danger p-2">
+                    <i class="bi bi-x-octagon me-1"></i>Pedido cancelado
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-success alert-dismissible fade show" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Coluna principal -->
+        <div class="col-lg-8">
+
+            <div class="card shadow-sm mb-4 border-success" sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')"
+                 th:with="proximos=${pedido.status.proximosPermitidos(pedido.tipoEntrega)}">
+                <div class="card-header fw-bold"><i class="bi bi-arrow-right-circle me-1"></i> Avançar pedido</div>
+                <div class="card-body">
+                    <p class="text-muted mb-0" th:if="${#lists.isEmpty(proximos)}"
+                       th:text="${pedido.status.name() == 'CANCELADO'}
+                                ? 'Pedido cancelado: nenhuma alteração de status é permitida.'
+                                : 'Atendimento concluído: nenhuma alteração de status é permitida.'"></p>
+                    <form th:each="s : ${proximos}" th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
+                          method="post" class="d-inline">
+                        <input type="hidden" name="novoStatus" th:value="${s}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi me-1" th:classappend="${s.icone}"></i><span th:text="${s.acao}"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 border-warning" sec:authorize="hasRole('GERENTE')">
+                <div class="card-header fw-bold"><i class="bi bi-shield-check me-1"></i> Ações do gerente</div>
+                <div class="card-body">
+                    <p class="text-muted mb-0" th:unless="${pedido.status.antesDaSaida}">
+                        Desconto e cancelamento só são permitidos antes da saída para entrega ou retirada.
+                    </p>
+
+                    <div class="row g-4" th:if="${pedido.status.antesDaSaida}">
+                        <!-- Desconto -->
+                        <div class="col-md-6">
+                            <h6 class="fw-bold"><i class="bi bi-percent me-1"></i>Aplicar desconto</h6>
+                            <form th:action="@{/pedidos/{id}/desconto(id=${pedido.id})}" method="post">
+                                <label class="form-label small">Percentual (máximo 20%)</label>
+                                <div class="input-group mb-2">
+                                    <input type="number" name="percentual" class="form-control"
+                                           min="0.01" max="20" step="0.01" required placeholder="Ex.: 10">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <input type="text" name="motivo" class="form-control mb-2" maxlength="200"
+                                       placeholder="Motivo (opcional)">
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="bi bi-tag me-1"></i> Aplicar desconto
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Cancelamento -->
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-danger"><i class="bi bi-x-octagon me-1"></i>Cancelar pedido</h6>
+                            <form th:action="@{/pedidos/{id}/cancelar(id=${pedido.id})}" method="post"
+                                  onsubmit="return confirm('Confirma o cancelamento? Esta operação não pode ser desfeita.');">
+                                <label class="form-label small">Justificativa (obrigatória, mínimo 10 caracteres)</label>
+                                <textarea name="justificativa" class="form-control mb-2" rows="3"
+                                          minlength="10" maxlength="300" required
+                                          placeholder="Ex.: cliente desistiu do pedido por telefone"></textarea>
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="bi bi-x-circle me-1"></i> Cancelar pedido
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itens e valores -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold">Itens</div>
+                <div class="card-body p-0">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Produto</th>
+                                <th class="text-center">Qtd.</th>
+                                <th class="text-end">Preço unit.</th>
+                                <th class="text-end pe-3">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="i : ${pedido.itens}">
+                                <td class="ps-3" th:text="${i.nomeProduto}"></td>
+                                <td class="text-center" th:text="${i.quantidade}"></td>
+                                <td class="text-end"
+                                    th:text="${'R$ ' + #numbers.formatDecimal(i.precoUnitario, 1, 'POINT', 2, 'COMMA')}"></td>
+                                <td class="text-end pe-3"
+                                    th:text="${'R$ ' + #numbers.formatDecimal(i.subtotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end">Subtotal</td>
+                                <td class="text-end pe-3"
+                                    th:text="${'R$ ' + #numbers.formatDecimal(pedido.subtotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                            <tr th:if="${pedido.valorDesconto != null and pedido.valorDesconto.signum() > 0}" class="text-danger">
+                                <td colspan="3" class="text-end"
+                                    th:text="${'Desconto (' + #numbers.formatDecimal(pedido.percentualDesconto, 1, 'POINT', 2, 'COMMA') + '%)'}"></td>
+                                <td class="text-end pe-3"
+                                    th:text="${'- R$ ' + #numbers.formatDecimal(pedido.valorDesconto, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                            <tr class="fw-bold fs-5">
+                                <td colspan="3" class="text-end">Total</td>
+                                <td class="text-end pe-3"
+                                    th:text="${'R$ ' + #numbers.formatDecimal(pedido.valorTotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dados gerais -->
+            <div class="card shadow-sm">
+                <div class="card-header fw-bold">Dados do pedido</div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Cliente:</strong> <span th:text="${pedido.clienteNome}"></span></p>
+                    <p class="mb-1"><strong>Atendimento:</strong> <span th:text="${pedido.tipoEntrega.descricao}"></span></p>
+                    <p class="mb-0"><strong>Observação:</strong>
+                        <span th:text="${pedido.observacao != null ? pedido.observacao : '—'}"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna lateral -->
+        <div class="col-lg-4">
+
+            <div class="card shadow-sm mb-3 border-info">
+                <div class="card-header fw-bold"><i class="bi bi-box-arrow-in-down me-1"></i> Entrada</div>
+                <div class="card-body small">
+                    <div><strong>Data/hora:</strong>
+                        <span th:text="${#temporals.format(pedido.dataHoraEntrada, 'dd/MM/yyyy HH:mm:ss')}"></span></div>
+                    <div><strong>Responsável:</strong> <span th:text="${pedido.responsavelEntrada}"></span></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3 border-warning" th:if="${pedido.dataHoraDesconto != null}">
+                <div class="card-header fw-bold"><i class="bi bi-tag me-1"></i> Desconto</div>
+                <div class="card-body small">
+                    <div><strong>Percentual:</strong>
+                        <span th:text="${#numbers.formatDecimal(pedido.percentualDesconto, 1, 'POINT', 2, 'COMMA') + '%'}"></span></div>
+                    <div><strong>Valor:</strong>
+                        <span th:text="${'R$ ' + #numbers.formatDecimal(pedido.valorDesconto, 1, 'POINT', 2, 'COMMA')}"></span></div>
+                    <div><strong>Data/hora:</strong>
+                        <span th:text="${#temporals.format(pedido.dataHoraDesconto, 'dd/MM/yyyy HH:mm:ss')}"></span></div>
+                    <div><strong>Responsável:</strong> <span th:text="${pedido.responsavelDesconto}"></span></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3 border-secondary" th:if="${pedido.dataHoraSaida != null}">
+                <div class="card-header fw-bold"><i class="bi bi-box-arrow-up me-1"></i> Saída</div>
+                <div class="card-body small">
+                    <div><strong>Tipo:</strong> <span th:text="${pedido.tipoEntrega.descricao}"></span></div>
+                    <div><strong>Data/hora:</strong>
+                        <span th:text="${#temporals.format(pedido.dataHoraSaida, 'dd/MM/yyyy HH:mm:ss')}"></span></div>
+                    <div><strong>Responsável:</strong> <span th:text="${pedido.responsavelSaida}"></span></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3 border-success" th:if="${pedido.dataHoraFinalizacao != null}">
+                <div class="card-header fw-bold"><i class="bi bi-flag me-1"></i> Finalização</div>
+                <div class="card-body small">
+                    <div><strong>Data/hora:</strong>
+                        <span th:text="${#temporals.format(pedido.dataHoraFinalizacao, 'dd/MM/yyyy HH:mm:ss')}"></span></div>
+                    <div><strong>Responsável:</strong> <span th:text="${pedido.responsavelFinalizacao}"></span></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3 border-danger" th:if="${pedido.dataHoraCancelamento != null}">
+                <div class="card-header fw-bold text-danger"><i class="bi bi-x-octagon me-1"></i> Cancelamento</div>
+                <div class="card-body small">
+                    <div><strong>Data/hora:</strong>
+                        <span th:text="${#temporals.format(pedido.dataHoraCancelamento, 'dd/MM/yyyy HH:mm:ss')}"></span></div>
+                    <div><strong>Responsável:</strong> <span th:text="${pedido.responsavelCancelamento}"></span></div>
+                    <div><strong>Justificativa:</strong> <span th:text="${pedido.justificativaCancelamento}"></span></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header fw-bold"><i class="bi bi-clock-history me-1"></i> Andamento</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item small" th:each="h : ${pedido.historicoStatus}">
+                        <span class="badge" th:classappend="${h.status.corBadge}">
+                            <i class="bi me-1" th:classappend="${h.status.icone}"></i><span th:text="${h.status.descricao}"></span>
+                        </span>
+                        <div class="text-muted mt-1">
+                            <span th:text="${#temporals.format(h.dataHora, 'dd/MM/yyyy HH:mm:ss')}"></span>
+                            — <span th:text="${h.usuario}"></span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
