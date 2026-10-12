@@ -1,4 +1,4 @@
-# PediuPatrão — Controle de Perfis, Pedidos e Auditoria
+# PediuPatrão - Controle de Perfis, Pedidos e Auditoria
 
 Evolução do sistema PediuPatrão (Atividade Prática M1 - Parte 2), usado por uma pizzaria para cadastrar
 clientes, gerenciar produtos e registrar pedidos. Esta versão diferencia as responsabilidades dos funcionários
