@@ -41,10 +41,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-/**
- * Testes das regras de negócio de pedidos (RF02, RF03, RF04 e auditoria do RF05).
- * Os repositórios são "mocks": não é necessário o MongoDB rodando.
- */
 @ExtendWith(MockitoExtension.class)
 class PedidoServiceTest {
 
@@ -62,7 +58,6 @@ class PedidoServiceTest {
 
     @BeforeEach
     void configurar() {
-        // save devolve o próprio pedido recebido (simula o banco)
         lenient().when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
     }
 
@@ -70,9 +65,7 @@ class PedidoServiceTest {
     void limpar() {
         SecurityContextHolder.clearContext();
     }
-
-    // ===================== RF02: valores calculados no servidor =====================
-
+    
     @Test
     @DisplayName("RF02: total calculado com o preço do BANCO; status, responsável e entrada definidos pelo servidor")
     void criarPedidoCalculaTotalNoServidor() {
@@ -103,8 +96,6 @@ class PedidoServiceTest {
         verify(pedidoRepository, never()).save(any());
     }
 
-    // ===================== RF04: desconto =====================
-
     @Test
     @DisplayName("RF04: desconto acima de 20% é recusado")
     void descontoAcimaDoLimiteEhRecusado() {
@@ -119,7 +110,7 @@ class PedidoServiceTest {
     @DisplayName("RF04: desconto de 20% recalcula o total no servidor e registra auditoria")
     void descontoDeVintePorCentoRecalculaTotal() {
         autenticarComo("gerente01", "GERENTE");
-        pedidoCom(StatusPedido.RECEBIDO); // subtotal R$ 100,00
+        pedidoCom(StatusPedido.RECEBIDO); 
 
         Pedido pedido = pedidoService.aplicarDesconto("pedido1", new BigDecimal("20"), "Cliente fidelidade");
 
@@ -140,8 +131,6 @@ class PedidoServiceTest {
                 () -> pedidoService.aplicarDesconto("pedido1", new BigDecimal("10"), null));
         verify(pedidoRepository, never()).save(any());
     }
-
-    // ===================== RF04: cancelamento =====================
 
     @Test
     @DisplayName("RF04: cancelamento sem justificativa é recusado")
@@ -181,8 +170,6 @@ class PedidoServiceTest {
         verify(pedidoRepository, never()).save(any());
     }
 
-    // ===================== RF03: transições de status =====================
-
     @Test
     @DisplayName("RF03: finalizar um pedido EM PREPARAÇÃO é recusado (exemplo do enunciado)")
     void finalizarPedidoEmPreparacaoEhRecusado() {
@@ -221,14 +208,11 @@ class PedidoServiceTest {
         verify(pedidoRepository, never()).save(any());
     }
 
-    // ===================== auxiliares =====================
-
     private void autenticarComo(String usuario, String perfil) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 usuario, null, List.of(new SimpleGrantedAuthority("ROLE_" + perfil))));
     }
 
-    /** Pedido de entrega com 2 x R$ 50,00 (subtotal R$ 100,00) no status informado. */
     private Pedido pedidoCom(StatusPedido status) {
         Pedido pedido = new Pedido();
         pedido.setId("pedido1");
@@ -262,7 +246,6 @@ class PedidoServiceTest {
         return produto;
     }
 
-    /** Compara valores monetários ignorando a escala (91.8 == 91.80). */
     private static void assertValor(String esperado, BigDecimal atual) {
         assertEquals(0, new BigDecimal(esperado).compareTo(atual),
                 "Esperado R$ " + esperado + ", obtido R$ " + atual);
