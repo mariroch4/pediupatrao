@@ -73,7 +73,7 @@ Resultado esperado: `Tests run: 37, Failures: 0, Errors: 0` e `BUILD SUCCESS`.
 
 ## Requisitos implementados
 
-### RF01 — Controle de usuários e permissões
+### RF01 - Controle de usuários e permissões
 - Três perfis definidos no `enum Perfil`: ADMIN, GERENTE e ATENDENTE.
 - O login (`UsuarioDetailsService`) usa o perfil gravado no banco (antes, todos recebiam `USER`).
 - Autorização no backend em duas camadas:
@@ -99,14 +99,14 @@ Resultado esperado: `Tests run: 37, Failures: 0, Errors: 0` e `BUILD SUCCESS`.
 | Clientes — excluir | ❌ | ✅ | ❌ |
 | Produtos — consultar / alterar | ✅ / ✅ | ✅ / ✅ | ✅ / ❌ |
 
-### RF02 — Evolução do cadastro de pedidos
+### RF02 - Evolução do cadastro de pedidos
 - O `Pedido` passou a ter: itens (produto, quantidade, preço unitário e subtotal), subtotal,
   percentual e valor de desconto, valor total, responsável pelo registro e data/hora de entrada,
   tipo de atendimento (entrega/retirada), observação e histórico de status.
 - O total é calculado no servidor.
 - Validações: cliente existente, ao menos um item, produto ativo e com preço, quantidade entre 1 e 50.
 
-### RF03 — Entrada, saída e transições
+### RF03 - Entrada, saída e transições
 Fluxo obrigatório implementado como máquina de estados no `enum StatusPedido`:
 RECEBIDO → EM PREPARAÇÃO → PRONTO → SAIU PARA ENTREGA (entrega) / RETIRADO (retirada) → FINALIZADO
 - Avanço de uma etapa por vez.
@@ -115,14 +115,14 @@ RECEBIDO → EM PREPARAÇÃO → PRONTO → SAIU PARA ENTREGA (entrega) / RETIRA
 - `FINALIZADO` e `CANCELADO` são estados finais: nenhuma alteração de status é aceita depois deles.
 - `CANCELADO` não é uma transição comum: só é alcançado pela operação de cancelamento do GERENTE.
 
-### RF04 — Cancelamentos e descontos (exclusivos do GERENTE)
+### RF04 - Cancelamentos e descontos (exclusivos do GERENTE)
 - Cancelamento: justificativa obrigatória, permitido apenas antes da saída,
   preserva os dados históricos (itens, valores e andamento) e impede alterações posteriores.
 - Desconto: percentual, maior que 0 e limitado a 20% do valor do pedido, permitido apenas antes da
   saída e o valor do desconto e o novo total são recalculados no servidor.
 - Ambas as operações são registradas na auditoria com usuário, data/hora e valores anteriores e novos.
 
-### RF05 — Auditoria
+### RF05 - Auditoria
 - Entidade, repositório e serviço próprios, persistidos na coleção `auditoria` do MongoDB.
 - Operações auditadas: inclusão de pedido, mudanças de status, desconto, cancelamento, inclusão,
   alteração e exclusão de clientes, e, adicionalmente, a gestão de usuários e perfis.
