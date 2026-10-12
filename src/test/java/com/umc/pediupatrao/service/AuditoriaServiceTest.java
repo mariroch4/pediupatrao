@@ -28,9 +28,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-/**
- * Testes da auditoria (RF05): campos alterados, identificação do usuário e proteção de dados pessoais.
- */
 @ExtendWith(MockitoExtension.class)
 class AuditoriaServiceTest {
 
