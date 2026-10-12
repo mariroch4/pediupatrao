@@ -26,9 +26,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-/**
- * Testes da administração segura de usuários (RF01).
- */
 @ExtendWith(MockitoExtension.class)
 class UsuarioServiceTest {
 
