@@ -21,11 +21,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-/**
- * Testes de AUTORIZAÇÃO NO BACKEND (RF01, RF04, RF05).
- * Sobe a camada web com o SecurityConfig real e simula requisições HTTP às APIs.
- * Prova que as restrições não dependem de esconder botões na tela.
- */
 @WebMvcTest(controllers = {PedidoController.class, UsuarioController.class, AuditoriaController.class})
 @Import(SecurityConfig.class)
 class SegurancaApiTest {
@@ -49,8 +44,6 @@ class SegurancaApiTest {
         mockMvc.perform(get("/api/pedidos"))
                 .andExpect(status().isUnauthorized());
     }
-
-    // ===== RF04: desconto e cancelamento exclusivos do GERENTE =====
 
     @Test
     @WithMockUser(username = "atendente01", roles = "ATENDENTE")
@@ -97,8 +90,6 @@ class SegurancaApiTest {
                 .andExpect(status().isForbidden());
     }
 
-    // ===== RF01: usuários e autoelevação =====
-
     @Test
     @WithMockUser(username = "atendente01", roles = "ATENDENTE")
     @DisplayName("ATENDENTE não lista usuários (403)")
@@ -116,8 +107,6 @@ class SegurancaApiTest {
                         .content("{\"username\": \"atendente01\", \"role\": \"ADMIN\"}"))
                 .andExpect(status().isForbidden());
     }
-
-    // ===== RF05: consulta restrita e integridade da auditoria =====
 
     @Test
     @WithMockUser(username = "atendente01", roles = "ATENDENTE")
