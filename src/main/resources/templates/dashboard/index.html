@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+<div th:fragment="content">
+
+    <link rel="stylesheet" th:href="@{/css/dashboard.css(v=3)}">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-speedometer2 me-2"></i>Dashboard
+            </h2>
+            <p class="text-muted mb-0">Visão geral das vendas e dos pedidos</p>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="chkAutoAtualizar" checked>
+                <label class="form-check-label small" for="chkAutoAtualizar">Atualizar a cada 60 s</label>
+            </div>
+            <div class="small text-muted text-end lh-sm">
+                <div>Última atualização</div>
+                <strong id="txtUltimaAtualizacao" class="text-dark">—</strong>
+            </div>
+            <button type="button" id="btnAtualizar" class="btn btn-primary">
+                <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+            </button>
+        </div>
+    </div>
+
+    <div class="card card-grafico mb-4">
+        <div class="card-body">
+            <form id="formFiltros" class="row g-3 align-items-end" novalidate>
+                <div class="col-6 col-md-2">
+                    <label for="filtroDataInicio" class="form-label small fw-medium">Data inicial</label>
+                    <input type="date" id="filtroDataInicio" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="filtroDataFim" class="form-label small fw-medium">Data final</label>
+                    <input type="date" id="filtroDataFim" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="filtroTipoEntrega" class="form-label small fw-medium">Atendimento</label>
+                    <select id="filtroTipoEntrega" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option th:each="t : ${tiposEntrega}" th:value="${t}" th:text="${t.descricao}"></option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="filtroStatus" class="form-label small fw-medium">Status</label>
+                    <select id="filtroStatus" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option th:each="s : ${statusPedido}" th:value="${s}" th:text="${s.descricao}"></option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="filtroResponsavel" class="form-label small fw-medium">Responsável</label>
+                    <input type="text" id="filtroResponsavel" class="form-control form-control-sm"
+                           placeholder="Ex.: atendente01">
+                </div>
+                <div class="col-6 col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                        <i class="bi bi-funnel me-1"></i>Filtrar
+                    </button>
+                    <button type="button" id="btnLimpar" class="btn btn-outline-secondary btn-sm" title="Limpar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+                    <span class="small text-muted me-1">Período rápido:</span>
+                    <button type="button" class="btn btn-outline-dark btn-sm btn-periodo" data-dias="1">Hoje</button>
+                    <button type="button" class="btn btn-outline-dark btn-sm btn-periodo" data-dias="7">7 dias</button>
+                    <button type="button" class="btn btn-outline-dark btn-sm btn-periodo" data-dias="30">30 dias</button>
+                    <button type="button" class="btn btn-outline-dark btn-sm btn-periodo" data-dias="60">60 dias</button>
+                    <span class="small text-muted ms-md-auto">Sem datas, o padrão são os últimos 30 dias.</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="periodo-destaque mb-4">
+        <div class="periodo-icone"><i class="bi bi-calendar3"></i></div>
+        <div class="periodo-texto">
+            <div class="periodo-rotulo">Período exibido</div>
+            <div class="periodo-datas">
+                <span id="periodoInicio">—</span>
+                <i class="bi bi-arrow-right mx-2"></i>
+                <span id="periodoFim">—</span>
+                <span class="periodo-dias" id="periodoDias">carregando...</span>
+            </div>
+            <div class="periodo-comparacao" id="periodoComparacao">&nbsp;</div>
+        </div>
+        <div class="periodo-filtros" id="periodoFiltros"></div>
+    </div>
+
+    <div id="alertaErro" class="alert d-none" role="alert"></div>
+
+    <div id="painelDashboard">
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="kpi-destaque kpi-faturamento">
+                    <div class="kpi-topo">
+                        <span class="kpi-rotulo">Faturamento</span>
+                        <span class="kpi-icone"><i class="bi bi-cash-coin"></i></span>
+                    </div>
+                    <div class="kpi-valor" id="kpiFaturamento">—</div>
+                    <div class="kpi-variacao neutra" id="kpiFaturamentoVar">&nbsp;</div>
+                    <i class="bi bi-cash-coin kpi-marca-dagua"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-destaque">
+                    <div class="kpi-topo">
+                        <span class="kpi-rotulo">Pedidos</span>
+                        <span class="kpi-icone"><i class="bi bi-receipt"></i></span>
+                    </div>
+                    <div class="kpi-valor" id="kpiPedidos">—</div>
+                    <div class="kpi-variacao neutra" id="kpiPedidosVar">&nbsp;</div>
+                    <i class="bi bi-receipt kpi-marca-dagua"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-destaque">
+                    <div class="kpi-topo">
+                        <span class="kpi-rotulo">Ticket médio</span>
+                        <span class="kpi-icone"><i class="bi bi-graph-up-arrow"></i></span>
+                    </div>
+                    <div class="kpi-valor" id="kpiTicket">—</div>
+                    <div class="kpi-variacao neutra" id="kpiTicketVar">&nbsp;</div>
+                    <i class="bi bi-graph-up-arrow kpi-marca-dagua"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="kpi-secundario">
+                    <div class="kpi-icone-circulo icone-azul"><i class="bi bi-basket"></i></div>
+                    <div class="conteudo">
+                        <div class="kpi-rotulo">Itens vendidos</div>
+                        <div class="kpi-valor" id="kpiItens">—</div>
+                        <div class="kpi-sub" id="kpiItensSub">&nbsp;</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-secundario">
+                    <div class="kpi-icone-circulo icone-verde"><i class="bi bi-tag"></i></div>
+                    <div class="conteudo">
+                        <div class="kpi-rotulo">Descontos concedidos</div>
+                        <div class="kpi-valor" id="kpiDescontos">—</div>
+                        <div class="kpi-sub" id="kpiDescontosSub">&nbsp;</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-secundario">
+                    <div class="kpi-icone-circulo icone-vermelho"><i class="bi bi-x-octagon"></i></div>
+                    <div class="conteudo">
+                        <div class="kpi-rotulo">Cancelamentos</div>
+                        <div class="kpi-valor" id="kpiCancelados">—</div>
+                        <div class="kpi-sub" id="kpiCanceladosSub">&nbsp;</div>
+                        <div class="barra-taxa"><div id="kpiCanceladosBarra"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-8">
+                <div class="card card-grafico">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-bar-chart-line me-2 text-warning"></i>Evolução das vendas</h6>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Agrupamento">
+                            <button type="button" class="btn btn-outline-dark active" data-agrupamento="DIA">Dia</button>
+                            <button type="button" class="btn btn-outline-dark" data-agrupamento="SEMANA">Semana</button>
+                            <button type="button" class="btn btn-outline-dark" data-agrupamento="MES">Mês</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="grafico-area" style="position: relative; height: 320px;">
+                            <canvas id="graficoVendas"></canvas>
+                            <div class="grafico-vazio"><i class="bi bi-inbox"></i>Nenhuma venda no período</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card card-grafico">
+                    <div class="card-header">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-diagram-3 me-2 text-warning"></i>Situação dos pedidos</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="grafico-area grafico-pequeno" style="position: relative; height: 230px;">
+                            <canvas id="graficoStatus"></canvas>
+                            <div class="grafico-vazio"><i class="bi bi-inbox"></i>Nenhum pedido no período</div>
+                        </div>
+                        <div class="row g-2 my-3">
+                            <div class="col-4"><div class="mini-stat"><div class="valor" id="stEmAndamento">—</div><div class="rotulo">Em andamento</div></div></div>
+                            <div class="col-4"><div class="mini-stat"><div class="valor" id="stFinalizados">—</div><div class="rotulo">Finalizados</div></div></div>
+                            <div class="col-4"><div class="mini-stat"><div class="valor" id="stCancelados">—</div><div class="rotulo">Cancelados</div></div></div>
+                        </div>
+                        <ul class="list-unstyled small mb-0">
+                            <li class="d-flex justify-content-between py-1 border-bottom">
+                                <span><i class="bi bi-fire me-2 text-warning"></i>Preparo médio</span>
+                                <strong id="stTempoPreparo">—</strong>
+                            </li>
+                            <li class="d-flex justify-content-between py-1 border-bottom">
+                                <span><i class="bi bi-scooter me-2 text-warning"></i>Até a saída</span>
+                                <strong id="stTempoSaida">—</strong>
+                            </li>
+                            <li class="d-flex justify-content-between py-1">
+                                <span><i class="bi bi-flag-fill me-2 text-warning"></i>Tempo total</span>
+                                <strong id="stTempoTotal">—</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-6">
+                <div class="card card-grafico">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-trophy me-2 text-warning"></i>Produtos mais vendidos</h6>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Ordenar ranking">
+                            <button type="button" class="btn btn-outline-dark active" data-ordenar="QUANTIDADE">Quantidade</button>
+                            <button type="button" class="btn btn-outline-dark" data-ordenar="FATURAMENTO">Faturamento</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 tabela-dashboard">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-3" style="width: 50px;">#</th>
+                                        <th>Produto</th>
+                                        <th class="text-end">Qtd.</th>
+                                        <th class="text-end">Faturamento</th>
+                                        <th class="text-end pe-3">Part.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelaRanking">
+                                    <tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card card-grafico">
+                    <div class="card-header">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-clock-history me-2 text-warning"></i>Pedidos por hora do dia</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="grafico-area" style="position: relative; height: 320px;">
+                            <canvas id="graficoHoras"></canvas>
+                            <div class="grafico-vazio"><i class="bi bi-inbox"></i>Nenhuma venda no período</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <div class="card card-grafico">
+                    <div class="card-header">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-signpost-split me-2 text-warning"></i>Entrega x Retirada</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="grafico-area" style="position: relative; height: 320px;">
+                            <canvas id="graficoTipo"></canvas>
+                            <div class="grafico-vazio"><i class="bi bi-inbox"></i>Nenhuma venda no período</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card card-grafico">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-list-ul me-2 text-warning"></i>Pedidos recentes</h6>
+                        <a th:href="@{/pedidos}" class="small text-decoration-none">Ver todos <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 tabela-dashboard">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-3">Pedido</th>
+                                        <th>Entrada</th>
+                                        <th>Cliente</th>
+                                        <th>Atendimento</th>
+                                        <th>Status</th>
+                                        <th class="text-end pe-3">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelaRecentes">
+                                    <tr><td colspan="6" class="text-center text-muted py-4">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script th:src="@{/js/dashboard.js(v=3)}"></script>
+</div>
+</body>
+</html>
