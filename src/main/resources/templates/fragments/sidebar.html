@@ -14,6 +14,8 @@
                     <span>Pediu Patrão</span>
                 </a>
 
+                <!-- Os itens são ocultados conforme o perfil apenas por usabilidade;
+                     a autorização real é feita no backend (SecurityConfig + @PreAuthorize). -->
                 <nav class="sidebar-nav">
                     <div class="sidebar-secao">Operação</div>
                     <ul class="nav flex-column">
@@ -41,6 +43,11 @@
 
                     <div class="sidebar-secao">Gestão</div>
                     <ul class="nav flex-column">
+                        <li class="nav-item" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
+                            <a class="nav-link" th:href="@{/dashboard}">
+                                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+                            </a>
+                        </li>
                         <li class="nav-item" sec:authorize="hasAnyRole('ADMIN', 'GERENTE')">
                             <a class="nav-link" th:href="@{/auditoria}">
                                 <i class="bi bi-shield-lock"></i><span>Auditoria</span>
@@ -70,6 +77,7 @@
                               th:each="auth : ${#authentication.authorities}"
                               th:text="${#strings.replace(auth.authority, 'ROLE_', '')}">PERFIL</span>
                     </div>
+                    <!-- Logout via POST (com token CSRF automático pelo th:action) -->
                     <form th:action="@{/logout}" method="post" class="m-0">
                         <button type="submit" class="btn-sair" title="Sair do sistema">
                             <i class="bi bi-box-arrow-right"></i>
@@ -80,6 +88,7 @@
             </div>
 
             <script>
+                // Destaca no menu a tela atual (escolhe o link mais específico)
                 (function () {
                     const caminho = window.location.pathname;
                     let melhorLink = null;
