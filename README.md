@@ -3,6 +3,8 @@
 **Aluna:** Mariana da Rocha Pereira Moreira
 **Curso:** Engenharia de Software - Universidade de Mogi das Cruzes (UMC)
 
+**Vídeo de apresentação do Dashboard:** https://youtu.be/sQaSN3uTTq0
+
 ---
 
 ## Tecnologias
